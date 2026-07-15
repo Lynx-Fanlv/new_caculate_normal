@@ -1,0 +1,7 @@
+[server]
+# 允许上传更大的 Excel 底表（单位：MB）
+maxUploadSize = 1024
+
+[browser]
+# 公共网页，使用默认地址即可
+gatherUsageStats = false
