@@ -1,4 +1,5 @@
-streamlit==1.32.0
-pandas==2.0.3
-numpy==1.26.4
-openpyxl==3.1.2
+# Streamlit Cloud 实际运行 Python 3.14（runtime.txt 被忽略），以下均为带 cp314 wheel 的版本
+streamlit==1.59.2
+pandas==3.0.3
+numpy==2.5.1
+openpyxl==3.1.5
