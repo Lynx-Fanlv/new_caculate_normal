@@ -17,6 +17,7 @@ import io
 import importlib
 
 from data_loader import load_and_clean, build_group_cols, DataValidationError
+from views import render_results
 
 st.set_page_config(page_title="患者服务部数据分析工具", layout="wide")
 
@@ -190,26 +191,4 @@ if st.button("🚀 开始分析", type="primary"):
 
 # ========== 显示结果（下载不触发清零） ==========
 if 'results' in st.session_state and st.session_state['results']:
-    for analysis_name, result_df in st.session_state['results'].items():
-        with st.container():
-            st.markdown('<div class="result-card">', unsafe_allow_html=True)
-            st.subheader(f"📈 {analysis_name} 结果")
-
-            if result_df is not None and not result_df.empty:
-                st.dataframe(result_df)
-
-                # 用 BytesIO 直接下载，避免临时文件残留
-                buf = io.BytesIO()
-                result_df.to_excel(buf, index=False)
-                buf.seek(0)
-                st.download_button(
-                    label=f"📥 下载 {analysis_name} 结果",
-                    data=buf.getvalue(),
-                    file_name=f"{analysis_name}_结果.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key=f"download_{analysis_name}",
-                )
-            else:
-                st.warning(f"{analysis_name} 计算完成，但结果为空。请检查输入数据格式。")
-
-            st.markdown('</div>', unsafe_allow_html=True)
+    render_results(st.session_state['results'])
