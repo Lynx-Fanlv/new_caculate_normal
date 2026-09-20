@@ -123,6 +123,10 @@ def render_results(results: dict) -> None:
                     )
                     if chart is not None:
                         _render_chart(chart)
+                        st.caption(
+                            "提示：单击某条曲线或图例中的某一项，即可高亮该曲线、其余淡化；"
+                            "按住 Shift 单击可同时高亮多条；双击图表空白处复位为全部高亮。"
+                        )
                     else:
                         st.info("当前筛选条件下没有可绘制的数据，请重新选择品种 / 药房。")
 

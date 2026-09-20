@@ -12,7 +12,13 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from export_utils import build_multi_sheet_excel
-from charts import prepare_chart_df, build_line_chart, COMBO_COL
+from charts import (
+    prepare_chart_df,
+    build_line_chart,
+    short_medic_name,
+    COMBO_COL,
+    DIMMED_OPACITY,
+)
 
 
 def _sample_results():
@@ -74,7 +80,9 @@ def test_prepare_chart_df_all_combos_sorted():
     d = prepare_chart_df(r1, "复购率")
     assert len(d) == 3
     assert set(d[COMBO_COL]) == {"药X · 药店A", "药X · 药店B"}
-    assert list(d.columns) == ["月份", COMBO_COL, "复购率"]
+    assert list(d.columns)[:3] == ["月份", COMBO_COL, "复购率"]
+    # 完整名称列保留下来，供 tooltip 使用
+    assert "药品名称" in d.columns and "药店" in d.columns
 
 
 def test_prepare_chart_df_missing_metric_returns_empty():
@@ -105,6 +113,77 @@ def test_build_line_chart_spec():
 
 def test_build_line_chart_empty_returns_none():
     assert build_line_chart(pd.DataFrame(columns=["月份", COMBO_COL, "复购率"]), "复购率") is None
+
+
+# ---------------- 图例可读性：短名 + 不截断 ----------------
+
+def test_short_medic_name_extracts_brand():
+    # 真实数据中的写法
+    assert short_medic_name("替雷利珠单抗注射液(百泽安)") == "百泽安"
+    assert short_medic_name("泽布替尼胶囊(百悦泽)") == "百悦泽"
+    # 全角括号
+    assert short_medic_name("某某注射液（商品名）") == "商品名"
+
+
+def test_short_medic_name_fallback_truncates_only_when_long():
+    assert short_medic_name("药X") == "药X"                      # 短名不截断
+    assert short_medic_name("") == ""
+    long_no_paren = "阿" * 20
+    out = short_medic_name(long_no_paren)
+    assert out.endswith("…") and len(out) == 9                    # 8 字 + 省略号
+
+
+def test_prepare_chart_df_uses_short_medic_in_combo():
+    df = pd.DataFrame({
+        "药店": ["攀枝花药房(连锁）"],
+        "药品名称": ["替雷利珠单抗注射液(百泽安)"],
+        "月份": ["2024-01"],
+        "DOT": [2.0],
+    })
+    d = prepare_chart_df(df, "DOT")
+    assert d.iloc[0][COMBO_COL] == "百泽安 · 攀枝花药房(连锁）"
+
+
+def test_legend_does_not_truncate_labels():
+    d = prepare_chart_df(_sample_results()["复购率分析"], "复购率")
+    chart = build_line_chart(d, "复购率")
+    spec = chart.to_dict()
+    legend = spec["encoding"]["color"]["legend"]
+    # Vega 中 limit<=0 表示不限长度，即不做「…」截断
+    assert legend["labelLimit"] == 0
+
+
+# ---------------- 交互：点选曲线/图例高亮 ----------------
+
+def test_highlight_selection_spec():
+    d = prepare_chart_df(_sample_results()["复购率分析"], "复购率")
+    spec = build_line_chart(d, "复购率").to_dict()
+    params = spec.get("params", [])
+    hl = [p for p in params if p.get("name") == "highlight"]
+    assert len(hl) == 1, f"params={params}"
+    sel = hl[0]["select"]
+    assert sel["type"] == "point"
+    assert sel["fields"] == [COMBO_COL]
+    assert sel["on"] == "click"
+    assert sel["toggle"] is True          # 再点一次取消高亮
+    assert hl[0]["bind"] == "legend"      # 图例项可点
+
+
+def test_highlight_opacity_condition():
+    d = prepare_chart_df(_sample_results()["复购率分析"], "复购率")
+    spec = build_line_chart(d, "复购率").to_dict()
+    opacity = spec["encoding"]["opacity"]
+    assert opacity["condition"]["param"] == "highlight"
+    assert opacity["condition"]["value"] == 1.0
+    assert opacity["value"] == DIMMED_OPACITY
+
+
+def test_highlight_can_be_disabled():
+    d = prepare_chart_df(_sample_results()["复购率分析"], "复购率")
+    spec = build_line_chart(d, "复购率", highlight=False).to_dict()
+    names = [p.get("name") for p in spec.get("params", [])]
+    assert "highlight" not in names        # 只剩 .interactive() 的缩放参数
+    assert spec["encoding"]["opacity"] == {"value": 1.0}
 
 
 # ---------------- 筛选默认值（智能阈值） ----------------
