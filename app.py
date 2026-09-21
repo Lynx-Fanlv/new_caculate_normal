@@ -122,6 +122,9 @@ if uploaded_file is not None:
         # 仅在新文件时清空，下载等操作不会触发
         if 'results' in st.session_state:
             del st.session_state['results']
+        # 换数据后旧的「品种 / 药房」筛选值已失效，一并重置（否则会残留上个文件的选项）
+        for k in ('sel_medics', 'sel_stores'):
+            st.session_state.pop(k, None)
         st.success(f"已上传文件：{uploaded_file.name}")
     # 同一文件：保持不变，保留已有分析结果
 else:
@@ -130,7 +133,7 @@ else:
         if os.path.exists(st.session_state['input_path']):
             os.unlink(st.session_state['input_path'])
         del st.session_state['input_path']
-    for k in ('file_id', 'results'):
+    for k in ('file_id', 'results', 'sel_medics', 'sel_stores'):
         if k in st.session_state:
             del st.session_state[k]
 

@@ -199,6 +199,66 @@ def test_decide_preselect_by_combo_count():
     assert ok2 is False and meds2 == [] and stores2 == []
 
 
+# ---------------- 快速预览：取前 N 个组合 ----------------
+
+def test_pick_first_combos_store_rich():
+    """药房多 -> 1 个品种 × 6 个药房 = 6 条。"""
+    from views import pick_first_combos
+    medics = ["百泽安", "百悦泽"]
+    stores = [f"药店{i:02d}" for i in range(1, 29)]      # 真实数据的规模：28 个药房
+    m, s = pick_first_combos(medics, stores, max_combos=6)
+    assert m == ["百泽安"]
+    assert len(s) == 6
+    assert len(m) * len(s) == 6
+
+
+def test_pick_first_combos_medic_rich():
+    """药房少 -> 靠品种凑够 6 条，且不超量。"""
+    from views import pick_first_combos
+    medics = [f"药{i}" for i in range(10)]
+    m, s = pick_first_combos(medics, ["唯一药店"], max_combos=6)
+    assert s == ["唯一药店"]
+    assert len(m) == 6
+    assert len(m) * len(s) == 6
+
+
+def test_pick_first_combos_never_exceeds_limit():
+    from views import pick_first_combos
+    m, s = pick_first_combos(["A", "B", "C"], ["x", "y", "z"], max_combos=4)
+    assert len(m) * len(s) == 4
+
+
+def test_pick_first_combos_total_less_than_limit():
+    """可选组合本来就不足 N 个时，取满即可。"""
+    from views import pick_first_combos
+    m, s = pick_first_combos(["A"], ["x", "y"], max_combos=6)
+    assert m == ["A"] and s == ["x", "y"]
+
+
+def test_pick_first_combos_empty_inputs():
+    from views import pick_first_combos
+    assert pick_first_combos([], []) == ([], [])
+    assert pick_first_combos(["A"], []) == ([], [])
+
+
+# ---------------- 占位图框 ----------------
+
+def test_chart_placeholder_html_mentions_metric_and_scope():
+    from views import chart_placeholder_html
+    html = chart_placeholder_html("复购率", ["百泽安", "百悦泽"], [f"s{i}" for i in range(28)])
+    assert "chart-placeholder" in html
+    assert "复购率" in html
+    # 说清数据规模与"需要先选择"
+    assert "2 个品种" in html and "28 个药房" in html and "56 个组合" in html
+    assert "选择品种" in html and "选择药房" in html
+
+
+def test_chart_placeholder_html_handles_no_options():
+    from views import chart_placeholder_html
+    html = chart_placeholder_html("DOT", [], [])
+    assert "chart-placeholder" in html and "DOT" in html
+
+
 
 def _run():
     tests = [v for k, v in sorted(globals().items())
